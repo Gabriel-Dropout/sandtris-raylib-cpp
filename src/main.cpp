@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "Functions.hpp"
+#include "Image.hpp"
 #include "Mouse.hpp"
 #include "Rectangle.hpp"
 #include "RenderTexture.hpp"
@@ -25,19 +26,20 @@
 #define H 160
 
 int globalTimer = 0;
+int shockTimer = 0;
+int shockMode = 0;  // 0:soft, 1:normal, 2:power
 
 
 const int BlkW = 4;
 const int screenWidth = 1080;
-const int screenHeight = 800;
-const int TblX = screenWidth/2, TblY = screenHeight/2 + 70;
+const int screenHeight = 900;
+const int TblX = screenWidth/2, TblY = screenHeight/2 + 30;
 
-const int TblULX = TblX - BlkW*W/2,
-          TblULY = TblY - BlkW*H/2;
-const raylib::Vector2 TblULV = {TblULX, TblULY};
+int TblULX = TblX - BlkW*W/2,
+    TblULY = TblY - BlkW*H/2;
+const int TblULY_init = TblULY;
 
-
-// raylib::Color cmap[6] = {WHITE, RED, BLUE, GREEN, VIOLET, DARKBROWN};
+raylib::Image brickImages[6];
 
 
 int main() {
@@ -51,6 +53,12 @@ int main() {
     GameLogic gameLogic(W, H);
 
     raylib::Texture atlas("assets/atlas.png");
+    brickImages[0] = raylib::Image("assets/brick0.png");
+    brickImages[1] = raylib::Image("assets/brick1.png");
+    brickImages[2] = raylib::Image("assets/brick2.png");
+    brickImages[3] = raylib::Image("assets/brick3.png");
+    brickImages[4] = raylib::Image("assets/brick4.png");
+    brickImages[5] = raylib::Image("assets/brick5.png");
 
     raylib::Vector2 nextOffset[] = {
         {94+1+6, 1+6},
@@ -76,65 +84,72 @@ int main() {
         // Update
         gameLogic.update();
         globalTimer++;
-
+        if(gameLogic.consumeFlag("GAMEOVER")) {
+            gameLogic.reset();
+        }
+        if(gameLogic.consumeFlag("SOFTSHOCK")) {
+            shockMode = 0;
+            shockTimer = 5;
+        }
+        if(gameLogic.consumeFlag("SHOCK")) {
+            shockMode = 1;
+            shockTimer = 8;
+        }
+        if(gameLogic.consumeFlag("POWERSHOCK")) {
+            shockMode = 2;
+            shockTimer = 10;
+        }
+        shockTimer = std::max(shockTimer-1, 0);
+        switch(shockMode) {
+        case 0:
+            TblULY = TblULY_init + shockTimer*(5-shockTimer);
+            break;
+        case 1:
+            TblULY = TblULY_init + shockTimer*(8-shockTimer);
+            break;
+        case 2:
+            TblULY = TblULY_init + shockTimer*(10-shockTimer);
+            break;
+        }
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
             ClearBackground(raylib::Color(0xFFF0F5FF));
 
-            DrawSpriteAtlas(atlas, mainUI[0], TblULX, TblULY, BlkW, BlkW, 0, WHITE);
+            if(globalTimer/60 % 2)
+                DrawSpriteAtlas(atlas, mainUI[0], TblULX, TblULY, BlkW, BlkW, 0, WHITE);
+            else
+                DrawSpriteAtlas(atlas, mainUI[1], TblULX, TblULY, BlkW, BlkW, 0, WHITE);
 
             DrawTexturePro(gameLogic.getTexture(), (Rectangle){ 0, 0, W, -H},
-                (Rectangle){ TblX, TblY, W*BlkW, H*BlkW },
-                (Vector2){ (float)W*BlkW/2, (float)H*BlkW/2,}, 0.0f, WHITE);
+                (Rectangle){ (float)TblULX, (float)TblULY, W*BlkW, H*BlkW },
+                (Vector2){0, 0}, 0.0f, WHITE);
 
             if(gameLogic.getFlag("MATCH")) {
                 std::cout<<"MATCH"<<std::endl;
-                for(int i=0; i<H; i++) for(int j=0; j<W; j++) {
-                    if(gameLogic.isPositionMatched(j, i)) {
-                        raylib::Vector2 UL(TblULX + BlkW*j, TblULY + BlkW*i);
-                        raylib::Vector2 UR = UL.Add({BlkW, 0}), BL = UL.Add({0, BlkW}), BR = UL.Add({BlkW, BlkW});
-
-                        float timer1 = (globalTimer % 30) / 30.0f;
-                        float timer2 = ((globalTimer + 15) % 30) / 30.0f;
-
-                        auto movingline = [](raylib::Vector2 v1, raylib::Vector2 v2, float timer) {
-                            float v = step(timer, .0f, 2);
-                            auto v3 = v1.MoveTowards(v2, std::max(BlkW*(v-1), 0.0f) - 2.0f);
-                            auto v4 = v1.MoveTowards(v2, std::min(BlkW*v, 8.0f) + 2.0f);
-                            DrawLineEx(v3, v4, 4, BLACK);
-                        };
-
-                        if(!gameLogic.isPositionMatched(j-1, i))
-                            movingline(UL, BL, ((i+j)%2)?timer1:timer2);
-                        if(!gameLogic.isPositionMatched(j+1, i))
-                            movingline(BR, UR, ((i+j)%2)?timer1:timer2);
-                        if(!gameLogic.isPositionMatched(j, i-1))
-                            movingline(UR, UL, ((i+j+1)%2)?timer1:timer2);
-                        if(!gameLogic.isPositionMatched(j, i+1))
-                            movingline(BL, BR, ((i+j+1)%2)?timer1:timer2);
+                for(int y=0; y<H; y++) for(int x=0; x<W; x++) {
+                    if(gameLogic.isPositionMatched(x, y) && (globalTimer/20 % 2)) {
+                        DrawRectangle(TblULX + BlkW*x, TblULY + BlkW*y, BlkW, BlkW, WHITE);
                     }
                 }
             }
 
+            // Draw Minos
             for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
                 const BlockState& curBlock = gameLogic.curBlock;
                 if(getMino(curBlock, i, j)) {
-                    DrawRectangle(TblULX + BlkW*(curBlock.x + 9*i), TblULY + BlkW*(curBlock.y + 9*j), BlkW*9, BlkW*9, colLighter(cmap[curBlock.col], -5));
-                    DrawRectangle(TblULX + BlkW*(curBlock.x + 9*i +1), TblULY + BlkW*(curBlock.y + 9*j +1), BlkW*7, BlkW*7, colLighter(cmap[curBlock.col], 25));
-                    DrawRectangle(TblULX + BlkW*(curBlock.x + 9*i +2), TblULY + BlkW*(curBlock.y + 9*j +2), BlkW*5, BlkW*5, colLighter(cmap[curBlock.col], -5));
+                    DrawSpriteAtlas(atlas, brick[curBlock.col], TblULX + BlkW*(curBlock.x + 9*i), TblULY + BlkW*(curBlock.y + 9*j), BlkW, BlkW, 0, WHITE);
                 }
             }
 
-            int tBlkW = 3;
             for(int n=0; n<4; n++) {
                 const BlockState& qBlock = gameLogic.blockQueue[n+1];
-                DrawSpriteAtlas(atlas, mino_24[qBlock.type], TblULX + nextOffset[n].x, TblULY + nextOffset[n].y, BlkW/2, BlkW/2, 0, cmap[qBlock.col]);
+                DrawSpriteAtlas(atlas, mino_24[qBlock.type], TblULX + nextOffset[n].x, TblULY + nextOffset[n].y, BlkW/2, BlkW/2, 0, brickImages[qBlock.col].GetColor(0,0));
             }
 
             const BlockState& holdBlock = gameLogic.holdBlock;
             if(holdBlock.type != -1) {
-                DrawSpriteAtlas(atlas, mino_16[holdBlock.type], TblULX + holdOffset.x, TblULY + holdOffset.y, BlkW, BlkW, globalTimer, cmap[holdBlock.col]);
+                DrawSpriteAtlas(atlas, mino_16[holdBlock.type], TblULX + holdOffset.x, TblULY + holdOffset.y, BlkW, BlkW, globalTimer, brickImages[holdBlock.col].GetColor(0,0));
             }
 
 

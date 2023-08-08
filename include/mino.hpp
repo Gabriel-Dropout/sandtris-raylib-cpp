@@ -1,6 +1,8 @@
 #ifndef MINO_HPP
 #define MINO_HPP
 
+#include "Functions.hpp"
+#include "Image.hpp"
 #include "raylib.h"
 #include "raylib-cpp.hpp"
 
@@ -20,6 +22,8 @@ inline constexpr unsigned long long minos[] = {
     0x0264063001320063,
 };
 
+extern raylib::Image brickImages[6];
+
 inline bool getMino(const BlockStateBase& blk, int x, int y) {
     return ((minos[blk.type] & (1ULL<<(16*blk.rot+4*y+x))) != 0);
 }
@@ -37,3 +41,4 @@ public:
 };
 
 #endif
+

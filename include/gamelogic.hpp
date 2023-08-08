@@ -12,13 +12,7 @@
 #include "mino.hpp"
 #include "helper.hpp"
 
-/*
-Flag Communication Design
-private std::set<std::string> flagSet;
-private setFlag(string name)
-public consumeFlag(string name)
-public bool getFlag(string name)
-*/
+
 class FlagObject {
 private:
 	std::set<std::string> flagSet;
@@ -39,8 +33,6 @@ public:
 	}
 };
 
-
-static raylib::Color cmap[6] = {WHITE, RED, BLUE, GREEN, VIOLET, DARKBROWN};
 
 class GameLogic: public FlagObject {
 private:
@@ -64,7 +56,18 @@ public:
 	    popBlock();
 	}
 
-	// gettexture
+	void reset() {
+		table.setAutoTexture();
+	    table.clearTable();
+		table.resetAutoTexture();
+	    popBlock();
+	    popBlock();
+	    popBlock();
+	    popBlock();
+	    popBlock();
+	}
+
+
 	raylib::TextureUnmanaged getTexture() {
 	    return table.getTexture();
 	}
@@ -81,7 +84,7 @@ public:
 
 	bool colCheck(const BlockState& blk) {
 	    for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
-	        if(!getMino(blk, i, j)) continue;
+	        if(!blk.get(i, j)) continue;
 	        for(int a=0; a<9; a++) for(int b=0; b<9; b++) {
 	            int tmpx = blk.x + i*9 + a, tmpy = blk.y + j*9 + b;
 	            if(!table.isSafe(tmpx, tmpy) || table.getTableColor(tmpx, tmpy)!=0) return true;
@@ -91,7 +94,7 @@ public:
 	}
 	bool colCheckWall(const BlockState& blk) {
 	    for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
-	        if(!getMino(blk, i, j)) continue;
+	        if(!blk.get(i, j)) continue;
 	        for(int a=0; a<9; a++) for(int b=0; b<9; b++) {
 	            int tmpx = blk.x + i*9 + a, tmpy = blk.y + j*9 + b;
 	            if(!table.isSafe(tmpx, tmpy)) return true;
@@ -102,13 +105,10 @@ public:
 
 	void putBlock(const BlockState& blk) {
 	    for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
-	        if(!getMino(blk, i, j)) continue;
+	        if(!blk.get(i, j)) continue;
 	        for(int a=0; a<9; a++) for(int b=0; b<9; b++) {
 	            int tmpx = blk.x + i*9 + a, tmpy = blk.y + j*9 + b;
-	            if(a!=0 && a!=8 && b!=0 && b!=8 && (a==1 || a==7 || b==1 | b==7))
-	                table.setTableEntry(tmpx, tmpy, {blk.col, 0, colLighter(cmap[blk.col], 25)});
-	            else
-	                table.setTableEntry(tmpx, tmpy, {blk.col, 0, colLighter(cmap[blk.col], -5)});
+	            table.setTableEntry(tmpx, tmpy, {blk.col, 0, brickImages[blk.col].GetColor(a, b)});
 	        }
 	    }
 	}
@@ -118,7 +118,7 @@ public:
 		// First resolve collision with walls
 	    while(colCheckWall(blk)) {
 	        for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
-	            if(!getMino(blk, i, j)) continue;
+	            if(!blk.get(i, j)) continue;
 	            for(int a=0; a<9; a++) for(int b=0; b<9; b++) {
 	                int tmpx = blk.x + i*9 + a, tmpy = blk.y + j*9 + b;
 	                if(!table.isSafe(tmpx, tmpy)) {
@@ -182,7 +182,7 @@ public:
                 curBlock.rot = (curBlock.rot+1)%4;
                 resolveCollision(curBlock);
             }
-            int yspd = IsKeyDown(KEY_DOWN) ? 3 : 1;
+            int yspd = IsKeyPressed(KEY_SPACE) ? 9999 : (IsKeyDown(KEY_DOWN) ? 3 : 1);
             for(int i=0; i<yspd; i++) {
                 BlockState tmp = curBlock;
                 tmp.y += 1;
@@ -191,6 +191,13 @@ public:
                 } else {
                     putBlock(curBlock);
                     popBlock();
+                    if(IsKeyPressed(KEY_SPACE)) {
+                    	setFlag("POWERSHOCK");
+                    } else if(IsKeyDown(KEY_DOWN)) {
+                    	setFlag("SHOCK");
+                    } else {
+                    	setFlag("SOFTSHOCK");
+                    }
 					if(colCheck(curBlock)) {
 						setFlag("GAMEOVER");
 					}

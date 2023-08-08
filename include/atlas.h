@@ -67,6 +67,14 @@ static rtpAtlasSprite mino_24[7] = {
     { "24x24_T", 12, 12, 400, 0, 24, 24, 0, false, 3, 6, 18, 12 },
     { "24x24_Z", 12, 12, 424, 0, 24, 24, 0, false, 3, 6, 18, 12 },
 };
+static rtpAtlasSprite brick[6] = {
+    { "brick0", 0, 0, 57, 198, 9, 9, 0, false, 0, 0, 9, 9 },
+    { "brick1", 0, 0, 66, 198, 9, 9, 0, false, 0, 0, 9, 9 },
+    { "brick2", 0, 0, 75, 198, 9, 9, 0, false, 0, 0, 9, 9 },
+    { "brick3", 0, 0, 84, 198, 9, 9, 0, false, 0, 0, 9, 9 },
+    { "brick4", 0, 0, 93, 198, 9, 9, 0, false, 0, 0, 9, 9 },
+    { "brick5", 0, 0, 48, 198, 9, 9, 0, false, 0, 0, 9, 9 },
+};
 
 inline void DrawSpriteAtlas(Texture2D &atlas, rtpAtlasSprite sprite, int x, int y, Color color) {
     DrawTexturePro(atlas,

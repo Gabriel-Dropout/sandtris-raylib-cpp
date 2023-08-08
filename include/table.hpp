@@ -15,10 +15,9 @@ class Table {
 public:
 	static constexpr TableEntry emptyEntry = {0, 0, WHITE};
 
-	int W, H;
+	const int W, H;
 	std::vector<std::vector<TableEntry> > table;
 	std::vector<int> matchValid;
-
 
 	raylib::RenderTexture2D sandTexture;
 	bool isAutoTextureMode = true;
@@ -38,7 +37,7 @@ public:
 		EndTextureMode();
 		isAutoTextureMode = false;
 	}
-	raylib::TextureUnmanaged GetTexture() {
+	raylib::TextureUnmanaged getTexture() {
         return sandTexture.GetTexture();
     }
 

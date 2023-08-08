@@ -5,7 +5,7 @@
 #include "raylib-cpp.hpp"
 
 
-struct BlockState {
+struct BlockStateBase {
     int x, y, rot, type, col;
 };
 
@@ -20,8 +20,20 @@ inline constexpr unsigned long long minos[] = {
     0x0264063001320063,
 };
 
-inline bool getMino(const BlockState& blk, int x, int y) {
+inline bool getMino(const BlockStateBase& blk, int x, int y) {
     return ((minos[blk.type] & (1ULL<<(16*blk.rot+4*y+x))) != 0);
 }
+
+// make mino as a class
+class BlockState : public BlockStateBase {
+public:
+    BlockState(): BlockStateBase{} {}
+    BlockState(int x, int y, int rot, int type, int col): BlockStateBase{x, y, rot, type, col} {}
+    BlockState(const BlockStateBase& blk): BlockStateBase{blk} {}
+
+    bool get(int x, int y) const {
+        return getMino(*this, x, y);
+    }
+};
 
 #endif

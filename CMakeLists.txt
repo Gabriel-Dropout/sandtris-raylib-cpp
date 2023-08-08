@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(example)
+project(sandtris)
 
 # Set project-wide version
 set(PROJECT_VERSION_MAJOR 1)
@@ -8,6 +8,7 @@ set(PROJECT_VERSION_PATCH 0)
 set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 set(SOURCE_FILES
     src/main.cpp
+    src/table.cpp
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

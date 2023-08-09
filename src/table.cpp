@@ -5,7 +5,7 @@
 #include "raylib.h"
 #include "raylib-cpp.hpp"
 
-#include "Table.hpp"
+#include "table.hpp"
 
 Table::Table(int W, int H): W(W), H(H), table(H, std::vector<TableEntry>(W)) {
 	sandTexture = raylib::RenderTexture2D(W, H);

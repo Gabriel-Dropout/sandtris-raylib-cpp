@@ -48,10 +48,15 @@ private:
 
 	int score = 0;
 	int combo = 0;
+
 public:
 	BlockState blockQueue[5];
 	BlockState& curBlock = blockQueue[0];
 	BlockState holdBlock = {40, 0, 0, -1, 0};
+	float realx = 40;
+	float hspd = 0;
+	float acc = 0.2;
+	float maxspd = 1.8;
 	
 	GameLogic(int W, int H): W(W), H(H), table(W, H) {
 	    popBlock();
@@ -97,6 +102,7 @@ public:
 	    for(int i=0; i<4; i++)
 	        blockQueue[i] = blockQueue[i+1];
 	    blockQueue[4] = {40, 0, 0, GetRandomValue(0, 6), GetRandomValue(1, 5)};
+	    realx = curBlock.x;
 	}
 
 	bool colCheck(const BlockState& blk) {
@@ -173,6 +179,7 @@ public:
         
 		table.setAutoTexture();
         if(clearTimer == -1) {
+        	// hold
             if(IsKeyPressed(KEY_F)) {
                 if(holdBlock.type != -1) {
                     std::swap(curBlock, holdBlock);
@@ -185,20 +192,32 @@ public:
                 }
             }
 
+            // move: internally decimal point are used, but the block is always snapped to the grid
             if(IsKeyDown(KEY_RIGHT)) {
-                BlockState tmp = curBlock;
-                tmp.x += 1;
-                if(!colCheck(tmp)) {
-                    curBlock = tmp;
-                }
+            	hspd = std::min(hspd+acc, maxspd);
             }
             if(IsKeyDown(KEY_LEFT)) {
-                BlockState tmp = curBlock;
-                tmp.x -= 1;
+            	hspd = std::max(hspd-acc, -maxspd);
+            }
+            if(!IsKeyDown(KEY_LEFT) && !IsKeyDown(KEY_RIGHT)) {
+				hspd = hspd>0 ? std::max(hspd-acc*0.5f, 0.0f) : std::min(hspd+acc*0.5f, 0.0f);
+			}
+			realx += hspd;
+			int xdiff = (int)realx - curBlock.x;
+			while(xdiff != 0) {
+				BlockState tmp = curBlock;
+                tmp.x += xdiff>0 ? 1 : -1;
+                xdiff += xdiff>0 ? -1 : 1;
+
                 if(!colCheck(tmp)) {
                     curBlock = tmp;
+                } else {
+                	realx = curBlock.x;
+                	hspd = 0;
+                	break;
                 }
-            }
+			}
+
             if(IsKeyPressed(KEY_UP)) {
                 curBlock.rot = (curBlock.rot+1)%4;
                 resolveCollision(curBlock);
@@ -238,7 +257,7 @@ public:
 				comboTimer = comboTimerMax;
             }
         } else if(clearTimer == 0) {
-            score += table.clearMatchedEntry();
+            score += table.clearMatchedEntry()/10;
 			consumeFlag("MATCH");
         }
 

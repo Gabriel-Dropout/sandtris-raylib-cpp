@@ -43,6 +43,21 @@ const int TblULY_init = TblULY;
 
 raylib::Image brickImages[6];
 
+enum class GameState {
+    MENU, GAME, GAMEOVER
+};
+GameState gameState = GameState::MENU;
+
+// Main Menu things
+float easeOutCubic(float t) {
+    if(t<0) return 0;
+    if(t>1) return 1;
+    return 1 - (1-t)*(1-t)*(1-t);
+}
+
+// Game Over things
+int lastScore = 0;
+
 
 int main() {
     // Initialization
@@ -88,93 +103,138 @@ int main() {
     // Main game loop
     while (!WindowShouldClose()) {
         UpdateMusicStream(music);
-        
-        // Update
-        gameLogic.update();
         globalTimer++;
-        if(gameLogic.consumeFlag("GAMEOVER")) {
-            gameLogic.reset();
-        }
-        if(gameLogic.consumeFlag("SOFTSHOCK")) {
-            shockMode = 0;
-            shockTimer = 5;
-            hitfx.Play();
-        }
-        if(gameLogic.consumeFlag("SHOCK")) {
-            shockMode = 1;
-            shockTimer = 8;
-            hitfx.Play();
-        }
-        if(gameLogic.consumeFlag("POWERSHOCK")) {
-            shockMode = 2;
-            shockTimer = 10;
-            hitfx.Play();
-        }
-        shockTimer = std::max(shockTimer-1, 0);
-        switch(shockMode) {
-        case 0:
-            TblULY = TblULY_init + shockTimer*(5-shockTimer);
+
+        switch(gameState) {
+        case GameState::MENU:
+            if(IsKeyPressed(KEY_ENTER)) {
+                gameState = GameState::GAME;
+            }
             break;
-        case 1:
-            TblULY = TblULY_init + shockTimer*(8-shockTimer);
+        case GameState::GAME:
+            // Update
+            gameLogic.update();
+            if(gameLogic.consumeFlag("GAMEOVER")) {
+                lastScore = gameLogic.getScore();
+                gameLogic.reset();
+                gameState = GameState::GAMEOVER;
+            }
+            if(gameLogic.consumeFlag("SOFTSHOCK")) {
+                shockMode = 0;
+                shockTimer = 5;
+                hitfx.Play();
+            }
+            if(gameLogic.consumeFlag("SHOCK")) {
+                shockMode = 1;
+                shockTimer = 8;
+                hitfx.Play();
+            }
+            if(gameLogic.consumeFlag("POWERSHOCK")) {
+                shockMode = 2;
+                shockTimer = 10;
+                hitfx.Play();
+            }
+            shockTimer = std::max(shockTimer-1, 0);
+            switch(shockMode) {
+            case 0:
+                TblULY = TblULY_init + shockTimer*(5-shockTimer);
+                break;
+            case 1:
+                TblULY = TblULY_init + shockTimer*(8-shockTimer);
+                break;
+            case 2:
+                TblULY = TblULY_init + shockTimer*(10-shockTimer);
+                break;
+            }
             break;
-        case 2:
-            TblULY = TblULY_init + shockTimer*(10-shockTimer);
+        case GameState::GAMEOVER:
+            if(IsKeyPressed(KEY_ENTER)) {
+                gameState = GameState::GAME;
+            }
             break;
         }
+
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
             ClearBackground(raylib::Color(0xFFF0F5FF));
 
-            if(globalTimer/60 % 2)
-                DrawSpriteAtlas(atlas, mainUI[0], TblULX, TblULY, BlkW, BlkW, 0, WHITE);
-            else
-                DrawSpriteAtlas(atlas, mainUI[1], TblULX, TblULY, BlkW, BlkW, 0, WHITE);
+            switch(gameState) {
+            case GameState::MENU:{
+                auto *starttext = "Press Enter to start";
+                auto textsize = MeasureTextEx(GetFontDefault(), starttext, 20, (int)(20/10));
+                if(globalTimer/30 % 2)
+                    DrawText(starttext, (int)(screenWidth/2) - textsize.x/2, 700, 20, BLACK);
+                DrawSpriteAtlas(atlas, logo, screenWidth/2, 300 - 526*(1-easeOutCubic((float)globalTimer/90)), BlkW, BlkW, 0, WHITE);
+                break;
+            }
+            case GameState::GAME:{
+                if(globalTimer/60 % 2)
+                    DrawSpriteAtlas(atlas, mainUI[0], TblULX, TblULY, BlkW, BlkW, 0, WHITE);
+                else
+                    DrawSpriteAtlas(atlas, mainUI[1], TblULX, TblULY, BlkW, BlkW, 0, WHITE);
 
-            DrawTexturePro(gameLogic.getTexture(), (Rectangle){ 0, 0, W, -H},
-                (Rectangle){ (float)TblULX, (float)TblULY, W*BlkW, H*BlkW },
-                (Vector2){0, 0}, 0.0f, WHITE);
+                DrawTexturePro(gameLogic.getTexture(), (Rectangle){ 0, 0, W, -H},
+                    (Rectangle){ (float)TblULX, (float)TblULY, W*BlkW, H*BlkW },
+                    (Vector2){0, 0}, 0.0f, WHITE);
 
-            if(gameLogic.getFlag("MATCH")) {
-                for(int y=0; y<H; y++) for(int x=0; x<W; x++) {
-                    if(gameLogic.isPositionMatched(x, y) && (globalTimer/20 % 2)) {
-                        DrawRectangle(TblULX + BlkW*x, TblULY + BlkW*y, BlkW, BlkW, WHITE);
+                if(gameLogic.getFlag("MATCH")) {
+                    for(int y=0; y<H; y++) for(int x=0; x<W; x++) {
+                        if(gameLogic.isPositionMatched(x, y) && (globalTimer/20 % 2)) {
+                            DrawRectangle(TblULX + BlkW*x, TblULY + BlkW*y, BlkW, BlkW, WHITE);
+                        }
                     }
                 }
-            }
-            if(gameLogic.consumeFlag("MATCH_ONCE")) {
-                matchfx.Play();
-            }
-
-            // Draw Minos
-            for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
-                const BlockState& curBlock = gameLogic.curBlock;
-                if(getMino(curBlock, i, j)) {
-                    DrawSpriteAtlas(atlas, brick[curBlock.col], TblULX + BlkW*(curBlock.x + 9*i), TblULY + BlkW*(curBlock.y + 9*j), BlkW, BlkW, 0, WHITE);
+                if(gameLogic.consumeFlag("MATCH_ONCE")) {
+                    matchfx.Play();
                 }
+
+                // Draw Minos
+                for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
+                    const BlockState& curBlock = gameLogic.curBlock;
+                    float realx = gameLogic.realx;  // for smooth movement, not use curBlock.x
+                    if(getMino(curBlock, i, j)) {
+                        DrawSpriteAtlas(atlas, brick[curBlock.col], TblULX + BlkW*(realx + 9*i), TblULY + BlkW*(curBlock.y + 9*j), BlkW, BlkW, 0, WHITE);
+                    }
+                }
+
+                for(int n=0; n<4; n++) {
+                    const BlockState& qBlock = gameLogic.blockQueue[n+1];
+                    DrawSpriteAtlas(atlas, mino_24[qBlock.type], TblULX + nextOffset[n].x, TblULY + nextOffset[n].y, (int)(BlkW/2), (int)(BlkW/2), 0, brickImages[qBlock.col].GetColor(0,0));
+                }
+
+                const BlockState& holdBlock = gameLogic.holdBlock;
+                if(holdBlock.type != -1) {
+                    DrawSpriteAtlas(atlas, mino_16[holdBlock.type], TblULX + holdOffset.x, TblULY + holdOffset.y, BlkW, BlkW, globalTimer, brickImages[holdBlock.col].GetColor(0,0));
+                }
+
+                // Draw Score
+                auto *scoretext = TextFormat("Score: %d", gameLogic.getScore());
+                auto scoresize = MeasureTextEx(GetFontDefault(), scoretext, 20, (int)(20/10));
+                DrawText(scoretext, TblULX + scoreOffset.x + 10, TblULY + scoreOffset.y - scoresize.y/2, 20, BLACK);
+
+                // Draw Combo
+                if(gameLogic.getCombo() > 0)
+                    drawCombo(gameLogic.getCombo(), TblX, TblULY + 100, 3, 1, 2, (float)gameLogic.getComboTimer()/gameLogic.comboTimerMax, globalTimer);
+
+                break;
             }
+            case GameState::GAMEOVER:{
+                auto *gameovertext = "GAME OVER";
+                auto textsize = MeasureTextEx(GetFontDefault(), gameovertext, 40, (int)(40/10));
+                DrawText(gameovertext, (int)(screenWidth/2) - textsize.x/2, 350, 40, BLACK);
 
-            for(int n=0; n<4; n++) {
-                const BlockState& qBlock = gameLogic.blockQueue[n+1];
-                DrawSpriteAtlas(atlas, mino_24[qBlock.type], TblULX + nextOffset[n].x, TblULY + nextOffset[n].y, BlkW/2, BlkW/2, 0, brickImages[qBlock.col].GetColor(0,0));
+                auto *lastscoretext = TextFormat("Score: %d", lastScore);
+                textsize = MeasureTextEx(GetFontDefault(), lastscoretext, 30, (int)(30/10));
+                DrawText(lastscoretext, (int)(screenWidth/2) - textsize.x/2, 350 + 60, 30, BLACK);
+
+                auto *restarttext = "PRESS ENTER TO RESTART";
+                textsize = MeasureTextEx(GetFontDefault(), restarttext, 30, (int)(30/10));
+                if(globalTimer/30 % 2)
+                    DrawText(restarttext, (int)(screenWidth/2) - textsize.x/2, 350 + 60 + 45, 30, BLACK);
+                break;
             }
-
-            const BlockState& holdBlock = gameLogic.holdBlock;
-            if(holdBlock.type != -1) {
-                DrawSpriteAtlas(atlas, mino_16[holdBlock.type], TblULX + holdOffset.x, TblULY + holdOffset.y, BlkW, BlkW, globalTimer, brickImages[holdBlock.col].GetColor(0,0));
             }
-
-            // Draw Score
-            auto *scoretext = TextFormat("Score: %d", gameLogic.getScore());
-            auto scoresize = MeasureTextEx(GetFontDefault(), scoretext, 20, 20/10);
-            DrawText(scoretext, TblULX + scoreOffset.x + 10, TblULY + scoreOffset.y - scoresize.y/2, 20, BLACK);
-
-            // Draw Combo
-            if(gameLogic.getCombo() > 0)
-                drawCombo(gameLogic.getCombo(), TblX, TblULY + 100, 3, 1, 2, (float)gameLogic.getComboTimer()/gameLogic.comboTimerMax, globalTimer);
-
-
         EndDrawing();
         //----------------------------------------------------------------------------------
     }

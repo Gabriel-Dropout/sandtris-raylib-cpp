@@ -54,7 +54,8 @@ public:
 	void setTableColor(int x, int y, int v);
 	void setTableRealColor(int x, int y, Color c);
 	void setTableMatch(int x, int y, int idx);
-	void floodFillTable(int x, int y, TableEntry entry);
+	int floodFillTable(int x, int y, TableEntry entry);
+	int clearMatchedEntry();
 
 	void updateTable();
 

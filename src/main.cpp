@@ -25,13 +25,15 @@
 #define W 90
 #define H 160
 
+raylib::Texture atlas;
+
 int globalTimer = 0;
 int shockTimer = 0;
 int shockMode = 0;  // 0:soft, 1:normal, 2:power
 
 
 const int BlkW = 4;
-const int screenWidth = 1080;
+const int screenWidth = 700;
 const int screenHeight = 900;
 const int TblX = screenWidth/2, TblY = screenHeight/2 + 30;
 
@@ -52,13 +54,13 @@ int main() {
 
     GameLogic gameLogic(W, H);
 
-    raylib::Texture atlas("assets/atlas.png");
-    brickImages[0] = raylib::Image("assets/brick0.png");
-    brickImages[1] = raylib::Image("assets/brick1.png");
-    brickImages[2] = raylib::Image("assets/brick2.png");
-    brickImages[3] = raylib::Image("assets/brick3.png");
-    brickImages[4] = raylib::Image("assets/brick4.png");
-    brickImages[5] = raylib::Image("assets/brick5.png");
+    atlas = raylib::Texture("assets/atlas.png");
+    brickImages[0] = raylib::Image("assets/individual/brick0.png");
+    brickImages[1] = raylib::Image("assets/individual/brick1.png");
+    brickImages[2] = raylib::Image("assets/individual/brick2.png");
+    brickImages[3] = raylib::Image("assets/individual/brick3.png");
+    brickImages[4] = raylib::Image("assets/individual/brick4.png");
+    brickImages[5] = raylib::Image("assets/individual/brick5.png");
 
     raylib::Vector2 nextOffset[] = {
         {94+1+6, 1+6},
@@ -67,20 +69,26 @@ int main() {
         {94+1+6, 1+6+45},
     };
     raylib::Vector2 holdOffset(-24+2+8, 6+2+8);
+    raylib::Vector2 scoreOffset(3 - 28, 16 - 34 + 5);
     for(int i=0; i<4; i++) nextOffset[i] *= BlkW;
     holdOffset *= BlkW;
+    scoreOffset *= BlkW;
     
 
     InitAudioDevice();              // Initialize audio device
 
-    // Music music = LoadMusicStream("assets/game_bgm.mp3");
-
-    //PlayMusicStream(music);
+    raylib::Music music("assets/game_bgm.mp3");
+    raylib::Sound hitfx("assets/hit.wav");
+    raylib::Sound matchfx("assets/match.wav");
+    
+    PlayMusicStream(music);
 
     //--------------------------------------------------------------------------------------
 
     // Main game loop
     while (!WindowShouldClose()) {
+        UpdateMusicStream(music);
+        
         // Update
         gameLogic.update();
         globalTimer++;
@@ -90,14 +98,17 @@ int main() {
         if(gameLogic.consumeFlag("SOFTSHOCK")) {
             shockMode = 0;
             shockTimer = 5;
+            hitfx.Play();
         }
         if(gameLogic.consumeFlag("SHOCK")) {
             shockMode = 1;
             shockTimer = 8;
+            hitfx.Play();
         }
         if(gameLogic.consumeFlag("POWERSHOCK")) {
             shockMode = 2;
             shockTimer = 10;
+            hitfx.Play();
         }
         shockTimer = std::max(shockTimer-1, 0);
         switch(shockMode) {
@@ -126,12 +137,14 @@ int main() {
                 (Vector2){0, 0}, 0.0f, WHITE);
 
             if(gameLogic.getFlag("MATCH")) {
-                std::cout<<"MATCH"<<std::endl;
                 for(int y=0; y<H; y++) for(int x=0; x<W; x++) {
                     if(gameLogic.isPositionMatched(x, y) && (globalTimer/20 % 2)) {
                         DrawRectangle(TblULX + BlkW*x, TblULY + BlkW*y, BlkW, BlkW, WHITE);
                     }
                 }
+            }
+            if(gameLogic.consumeFlag("MATCH_ONCE")) {
+                matchfx.Play();
             }
 
             // Draw Minos
@@ -152,6 +165,14 @@ int main() {
                 DrawSpriteAtlas(atlas, mino_16[holdBlock.type], TblULX + holdOffset.x, TblULY + holdOffset.y, BlkW, BlkW, globalTimer, brickImages[holdBlock.col].GetColor(0,0));
             }
 
+            // Draw Score
+            auto *scoretext = TextFormat("Score: %d", gameLogic.getScore());
+            auto scoresize = MeasureTextEx(GetFontDefault(), scoretext, 20, 20/10);
+            DrawText(scoretext, TblULX + scoreOffset.x + 10, TblULY + scoreOffset.y - scoresize.y/2, 20, BLACK);
+
+            // Draw Combo
+            if(gameLogic.getCombo() > 0)
+                drawCombo(gameLogic.getCombo(), TblX, TblULY + 100, 3, 1, 2, (float)gameLogic.getComboTimer()/gameLogic.comboTimerMax, globalTimer);
 
 
         EndDrawing();

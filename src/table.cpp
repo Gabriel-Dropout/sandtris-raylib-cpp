@@ -62,9 +62,11 @@ void Table::setTableMatch(int x, int y, int idx) {
     }
 }
 
-void Table::floodFillTable(int x, int y, TableEntry entry) {
-    if(!isSafe(x, y)) return;  // just for safety
-    if(table[y][x].color == entry.color) return;  // prevent infinite loop
+// floodfill the table with entry
+// return the number of blocks changed
+int Table::floodFillTable(int x, int y, TableEntry entry) {
+    if(!isSafe(x, y)) return 0;  // just for safety
+    if(table[y][x].color == entry.color) return 0;  // prevent infinite loop
 
     int prev = table[y][x].color;
     setTableEntry(x, y, entry);
@@ -72,10 +74,24 @@ void Table::floodFillTable(int x, int y, TableEntry entry) {
     static const int dx[8] = {0, 1, 1, 1, 0, -1, -1, -1};
     static const int dy[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
 
+    int cnt = 1;
     for(int i = 0; i < 8; i++) {
         int nx = x + dx[i], ny = y + dy[i];
-        if(isSafe(nx, ny) && table[ny][nx].color == prev) floodFillTable(nx, ny, entry);
+        if(isSafe(nx, ny) && table[ny][nx].color == prev)
+            cnt += floodFillTable(nx, ny, entry);
     }
+    return cnt;
+}
+
+// clear every matched entries
+// return the number of blocks changed
+int Table::clearMatchedEntry() {
+    int cnt = 0;
+    for(int i=0; i<H; i++) {
+        if(findMatch(getTableMatch(0, i)))
+            cnt += floodFillTable(0, i, Table::emptyEntry);
+    }
+    return cnt;
 }
 
 void Table::updateTable() {

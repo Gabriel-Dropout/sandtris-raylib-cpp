@@ -12,7 +12,7 @@
 #include "mino.hpp"
 #include "helper.hpp"
 
-
+// FLAG interface for communicating with the external environment
 class FlagObject {
 private:
 	std::set<std::string> flagSet;
@@ -35,14 +35,19 @@ public:
 
 
 class GameLogic: public FlagObject {
+public:
+	const int clearTimerMax = 60;
+	const int comboTimerMax = 60*10;
 private:
 	int W, H;
 	Table table;
 
 	int globalTimer = 0;
-	bool clearing = false;
 	int clearTimer = -1;
-	const int clearTimerMax = 90;
+	int comboTimer = 0;
+
+	int score = 0;
+	int combo = 0;
 public:
 	BlockState blockQueue[5];
 	BlockState& curBlock = blockQueue[0];
@@ -65,11 +70,23 @@ public:
 	    popBlock();
 	    popBlock();
 	    popBlock();
+
+		score = 0;
 	}
 
 
 	raylib::TextureUnmanaged getTexture() {
 	    return table.getTexture();
+	}
+
+	int getScore() const {
+		return score;
+	}
+	int getCombo() const {
+		return combo;
+	}
+	int getComboTimer() const {
+		return comboTimer;
 	}
 
 	bool isPositionMatched(int x, int y) {
@@ -149,6 +166,10 @@ public:
 
         globalTimer++;
         clearTimer = std::max(clearTimer-1, -1);
+        comboTimer = std::max(comboTimer-1, 0);
+		if(comboTimer == 0) {
+			combo = 0;
+		}
         
 		table.setAutoTexture();
         if(clearTimer == -1) {
@@ -191,6 +212,7 @@ public:
                 } else {
                     putBlock(curBlock);
                     popBlock();
+
                     if(IsKeyPressed(KEY_SPACE)) {
                     	setFlag("POWERSHOCK");
                     } else if(IsKeyDown(KEY_DOWN)) {
@@ -211,12 +233,12 @@ public:
             if(!table.matchValid.empty()) {
                 clearTimer = clearTimerMax;
 				setFlag("MATCH");
+				setFlag("MATCH_ONCE");
+				combo++;
+				comboTimer = comboTimerMax;
             }
         } else if(clearTimer == 0) {
-            for(int i=0; i<H; i++) {
-                if(table.findMatch(table.getTableMatch(0, i)))
-                    table.floodFillTable(0, i, Table::emptyEntry);
-            }
+            score += table.clearMatchedEntry();
 			consumeFlag("MATCH");
         }
 

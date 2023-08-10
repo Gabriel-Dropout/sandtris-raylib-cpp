@@ -57,6 +57,19 @@ public:
 	float hspd = 0;
 	float acc = 0.2;
 	float maxspd = 1.8;
+
+	int wizardX = 0;
+	enum WizardState {
+		WS_IDLE,
+		WS_MOVE,
+		WS_ANGRY,
+	};
+	int wizardState = WS_IDLE;
+	int wizardTimer = 0;
+	int wizardDir = 1;
+
+	int bombx, bomby;
+
 	
 	GameLogic(int W, int H): W(W), H(H), table(W, H) {
 	    popBlock();
@@ -136,6 +149,16 @@ public:
 	    }
 	}
 
+	void rainbowBomb(int x, int y, int r) {
+		for(int i=-r; i<=r; i++) for(int j=-r; j<=r; j++) {
+			if(i*i+j*j>r*r) continue;
+			if(!table.isSafe(x+i, y+j)) continue;
+			if(table.getTableColor(x+i, y+j)==0) continue;
+			int ranColIdx = GetRandomValue(1, 5);
+			table.setTableEntry(x+i, y+j, {ranColIdx, 0, brickImages[ranColIdx].GetColor(0, 0)});
+		}
+	}
+
 	// Make sure that the block is not colliding with anything
 	bool resolveCollision(BlockState& blk) {
 		// First resolve collision with walls
@@ -176,9 +199,61 @@ public:
 		if(comboTimer == 0) {
 			combo = 0;
 		}
+		wizardTimer = std::max(wizardTimer-1, 0);
         
 		table.setAutoTexture();
         if(clearTimer == -1) {
+			// wizard
+			switch(wizardState) {
+			case WS_IDLE:
+				if(wizardTimer == 0) {
+					if(GetRandomValue(0, 4) == 0) {
+						wizardState = WS_ANGRY;
+						wizardTimer = 180;
+						// skill
+						for(int i=0; i<20; i++) {
+							bombx = GetRandomValue(0, W-1);
+							bomby = GetRandomValue(0, H-1);
+							if(table.getTableColor(bombx, bomby)!=0) {
+								setFlag("BOMB");
+								rainbowBomb(bombx, bomby, 15);
+								break;
+							}
+						}
+					} else {
+						wizardState = WS_MOVE;
+						wizardDir = GetRandomValue(0, 1)*2 - 1;
+						
+						wizardTimer = 180;
+					}
+				}
+				break;
+			case WS_MOVE:
+				if(globalTimer % 10 == 0)
+					wizardX += wizardDir;
+				if(wizardX < 0) {
+					wizardX = 0;
+					wizardDir = 1;
+				} else if(wizardX >= W-4) {
+					wizardX = W-4;
+					wizardDir = -1;
+				}
+
+				if(wizardTimer == 0) {
+					wizardState = WS_IDLE;
+					wizardTimer = 120;
+				}
+				break;
+			case WS_ANGRY:
+				if(wizardTimer == 0) {
+					wizardState = WS_IDLE;
+					wizardTimer = 120;
+				}
+				break;
+			}
+
+
+
         	// hold
             if(IsKeyPressed(KEY_F)) {
                 if(holdBlock.type != -1) {

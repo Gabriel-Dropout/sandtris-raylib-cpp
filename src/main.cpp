@@ -58,6 +58,10 @@ float easeOutCubic(float t) {
 // Game Over things
 int lastScore = 0;
 
+// Wizard things
+int bombTimer = 0;
+int wizardOffset = 0;
+
 
 int main() {
     // Initialization
@@ -95,6 +99,7 @@ int main() {
     raylib::Music music("assets/game_bgm.mp3");
     raylib::Sound hitfx("assets/hit.wav");
     raylib::Sound matchfx("assets/match.wav");
+    raylib::Sound bombfx("assets/bomb.wav");
     
     PlayMusicStream(music);
 
@@ -104,6 +109,7 @@ int main() {
     while (!WindowShouldClose()) {
         UpdateMusicStream(music);
         globalTimer++;
+        bombTimer = std::max(bombTimer-1, 0);
 
         switch(gameState) {
         case GameState::MENU:
@@ -146,6 +152,12 @@ int main() {
                 TblULY = TblULY_init + shockTimer*(10-shockTimer);
                 break;
             }
+
+            // Wizard magic
+            if(gameLogic.consumeFlag("BOMB")) {
+                bombTimer = 60;
+                bombfx.Play();
+            }
             break;
         case GameState::GAMEOVER:
             if(IsKeyPressed(KEY_ENTER)) {
@@ -177,6 +189,18 @@ int main() {
                 DrawTexturePro(gameLogic.getTexture(), (Rectangle){ 0, 0, W, -H},
                     (Rectangle){ (float)TblULX, (float)TblULY, W*BlkW, H*BlkW },
                     (Vector2){0, 0}, 0.0f, WHITE);
+                
+                // Bomb Effect
+                if(bombTimer>0) {
+                    int r=15;
+                    for(int i=-r; i<=r; i++) for(int j=-r; j<=r; j++) {
+                        float inner = (1.0f - bombTimer/60.0f)*r;
+                        if(i*i+j*j>r*r) continue;
+                        if(i*i+j*j<inner*inner) continue;
+
+                        DrawRectangle(TblULX + BlkW*(gameLogic.bombx+i), TblULY + BlkW*(gameLogic.bomby+j), BlkW, BlkW, WHITE);
+                    }
+                }
 
                 if(gameLogic.getFlag("MATCH")) {
                     for(int y=0; y<H; y++) for(int x=0; x<W; x++) {
@@ -216,7 +240,25 @@ int main() {
                 // Draw Combo
                 if(gameLogic.getCombo() > 0)
                     drawCombo(gameLogic.getCombo(), TblX, TblULY + 100, 3, 1, 2, (float)gameLogic.getComboTimer()/gameLogic.comboTimerMax, globalTimer);
-
+                
+                // Draw Wizard
+                rtpAtlasSprite wizardCurImg;
+                wizardOffset *= 0.9;
+                switch(gameLogic.wizardState) {
+                case GameLogic::WS_IDLE:
+                    wizardCurImg = wizardIdleImg;
+                    break;
+                case GameLogic::WS_MOVE:
+                    wizardCurImg = wizardWalkImg[(globalTimer/10) % 6];
+                    break;
+                case GameLogic::WS_ANGRY:
+                    wizardOffset = sinf((float)(60 - bombTimer)/20.0f)*20.0f;
+                    wizardCurImg = wizardAngryImg;
+                    break;
+                }
+                DrawSpriteAtlas(atlas, wizardCurImg, TblULX + BlkW*gameLogic.wizardX + wizardOffset, TblULY + BlkW, BlkW*gameLogic.wizardDir, BlkW, 0, WHITE);
+                DrawText(TextFormat("%d", gameLogic.wizardState), 10, 0, 20, BLACK);
+                DrawText(TextFormat("%d", gameLogic.wizardX), 10, 60, 20, BLACK);
                 break;
             }
             case GameState::GAMEOVER:{

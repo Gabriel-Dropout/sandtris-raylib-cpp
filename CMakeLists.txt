@@ -9,6 +9,7 @@ set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT
 set(SOURCE_FILES
     src/main.cpp
     src/table.cpp
+    src/atlas.cpp
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

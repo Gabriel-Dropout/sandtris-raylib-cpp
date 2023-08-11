@@ -49,7 +49,7 @@ inline void drawCombo(int combo, int x, int y, int scale, int halign, int valign
     int textWidth = 0;
     for(int idx : idxList) {
         if(idx == idx_space) textWidth += 4*scale;
-        else textWidth += (comboImg[idx].sourceWidth + 1)*scale;
+        else textWidth += (getSprite(comboIdx[idx]).sourceWidth + 1)*scale;
     }
     x -= halign*textWidth/2;
     int fillWidth = (int)(textWidth*amount);
@@ -65,21 +65,21 @@ inline void drawCombo(int combo, int x, int y, int scale, int halign, int valign
         }
 
         int drawX = x + xoffset;
-        int drawY = y - valign*comboImg[idx].sourceHeight*scale/2;
+        int drawY = y - valign*getSprite(comboIdx[idx]).sourceHeight*scale/2;
         drawY += sinf((timer*10 + i*20)*DEG2RAD)*scale*3;
 
         // fill
         if(fillWidth < xoffset)
-            DrawSpriteAtlas(atlas, comboImg[idx], drawX, drawY, scale, scale, 0, DARKGRAY);
-        else if(fillWidth > xoffset + comboImg[idx].sourceWidth*scale)
-            DrawSpriteAtlas(atlas, comboImg[idx], drawX, drawY, scale, scale, 0, WHITE);
+            DrawSpriteAtlas(atlas, getSprite(comboIdx[idx]), drawX, drawY, scale, scale, 0, DARKGRAY);
+        else if(fillWidth > xoffset + getSprite(comboIdx[idx]).sourceWidth*scale)
+            DrawSpriteAtlas(atlas, getSprite(comboIdx[idx]), drawX, drawY, scale, scale, 0, WHITE);
         else {
             int tmpWidth = fillWidth - xoffset;
-            DrawSpriteAtlas(atlas, comboImg[idx], drawX, drawY, scale, scale, 0, DARKGRAY);
-            DrawSpriteAtlas(atlas, comboImg[idx], ::Rectangle{0, 0, (float)tmpWidth/scale, (float)comboImg[idx].sourceHeight}, drawX, drawY, scale, scale, 0, WHITE);
+            DrawSpriteAtlas(atlas, getSprite(comboIdx[idx]), drawX, drawY, scale, scale, 0, DARKGRAY);
+            DrawSpriteAtlas(atlas, getSprite(comboIdx[idx]), ::Rectangle{0, 0, (float)tmpWidth/scale, (float)getSprite(comboIdx[idx]).sourceHeight}, drawX, drawY, scale, scale, 0, WHITE);
         }
 
-        xoffset += (comboImg[idx].sourceWidth + 1)*scale;
+        xoffset += (getSprite(comboIdx[idx]).sourceWidth + 1)*scale;
     }
 }
 

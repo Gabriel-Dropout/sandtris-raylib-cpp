@@ -5,6 +5,7 @@
 #include <set>
 #include <string>
 
+#include "Vector2.hpp"
 #include "raylib.h"
 #include "raylib-cpp.hpp"
 
@@ -150,12 +151,27 @@ public:
 	}
 
 	void rainbowBomb(int x, int y, int r) {
-		for(int i=-r; i<=r; i++) for(int j=-r; j<=r; j++) {
-			if(i*i+j*j>r*r) continue;
-			if(!table.isSafe(x+i, y+j)) continue;
-			if(table.getTableColor(x+i, y+j)==0) continue;
+		r /= 2;
+		for(int n=0; n<5; n++) {
+			// define the position of a small bomb
+			raylib::Vector2 pos(x, y);
+			int xoff, yoff;
+			do {
+				xoff = GetRandomValue(-r, r);
+				yoff = GetRandomValue(-r, r);
+			} while(xoff*xoff+yoff*yoff > r*r);
+			pos += raylib::Vector2(xoff, yoff);
+
+			// define the color of the small bomb
 			int ranColIdx = GetRandomValue(1, 5);
-			table.setTableEntry(x+i, y+j, {ranColIdx, 0, brickImages[ranColIdx].GetColor(0, 0)});
+
+			// put the small bomb
+			for(int i=-r; i<=r; i++) for(int j=-r; j<=r; j++) {
+				if(i*i+j*j>r*r) continue;
+				if(!table.isSafe(pos.x+i, pos.y+j)) continue;
+				if(table.getTableColor(pos.x+i, pos.y+j)==0) continue;
+				table.setTableEntry(pos.x+i, pos.y+j, {ranColIdx, 0, brickImages[ranColIdx].GetColor(0, 0)});
+			}
 		}
 	}
 
@@ -209,7 +225,7 @@ public:
 				if(wizardTimer == 0) {
 					if(GetRandomValue(0, 4) == 0) {
 						wizardState = WS_ANGRY;
-						wizardTimer = 180;
+						wizardTimer = 240;
 						// skill
 						for(int i=0; i<20; i++) {
 							bombx = GetRandomValue(0, W-1);

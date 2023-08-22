@@ -93,6 +93,7 @@ int main() {
     
 
     InitAudioDevice();              // Initialize audio device
+    SetMasterVolume(0.5);
 
     raylib::Music music("assets/sound/game_bgm.mp3");
     raylib::Sound hitfx("assets/sound/hit.wav");
@@ -210,22 +211,21 @@ int main() {
                 }
 
                 // Draw Minos
-                for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
+                for(int n=0; n<4; n++) {
                     const BlockState& curBlock = gameLogic.curBlock;
                     float realx = gameLogic.realx;  // for smooth movement, not use curBlock.x
-                    if(getMino(curBlock, i, j)) {
-                        DrawSpriteAtlas(atlas, getSprite(brick[curBlock.col]), TblULX + BlkW*(realx + 9*i), TblULY + BlkW*(curBlock.y + 9*j), BlkW, BlkW, 0, WHITE);
-                    }
+                    raylib::Vector2 pos = curBlock.get(n);
+                    DrawSpriteAtlas(atlas, getSprite(brick[curBlock.col[n]]), TblULX + BlkW*(realx + 9*pos.x), TblULY + BlkW*(curBlock.y + 9*pos.y), BlkW, BlkW, 0, WHITE);
                 }
 
                 for(int n=0; n<4; n++) {
                     const BlockState& qBlock = gameLogic.blockQueue[n+1];
-                    DrawSpriteAtlas(atlas, getSprite(mino_24[qBlock.type]), TblULX + nextOffset[n].x, TblULY + nextOffset[n].y, (int)(BlkW/2), (int)(BlkW/2), 0, brickImages[qBlock.col].GetColor(0,0));
+                    DrawSpriteAtlas(atlas, getSprite(mino_24[qBlock.type]), TblULX + nextOffset[n].x, TblULY + nextOffset[n].y, (int)(BlkW/2), (int)(BlkW/2), 0, brickImages[qBlock.col[0]].GetColor(0,0));
                 }
 
                 const BlockState& holdBlock = gameLogic.holdBlock;
                 if(holdBlock.type != -1) {
-                    DrawSpriteAtlas(atlas, getSprite(mino_16[holdBlock.type]), TblULX + holdOffset.x, TblULY + holdOffset.y, BlkW, BlkW, globalTimer, brickImages[holdBlock.col].GetColor(0,0));
+                    DrawSpriteAtlas(atlas, getSprite(mino_16[holdBlock.type]), TblULX + holdOffset.x, TblULY + holdOffset.y, BlkW, BlkW, globalTimer, brickImages[holdBlock.col[0]].GetColor(0,0));
                 }
 
                 // Draw Score

@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <set>
+#include <map>
 #include <string>
 
 #include "Vector2.hpp"
@@ -115,7 +116,7 @@ public:
 	void popBlock() {
 	    for(int i=0; i<4; i++)
 	        blockQueue[i] = blockQueue[i+1];
-	    blockQueue[4] = {40, 0, 0, GetRandomValue(0, 6), GetRandomValue(1, 5)};
+	    blockQueue[4] = {36, 0, 0, GetRandomValue(0, 6), GetRandomValue(1, 5)};
 	    realx = curBlock.x;
 	}
 
@@ -141,37 +142,35 @@ public:
 	}
 
 	void putBlock(const BlockState& blk) {
-	    for(int i=0; i<4; i++) for(int j=0; j<4; j++) {
-	        if(!blk.get(i, j)) continue;
+		for(int n=0; n<4; n++) {
+			raylib::Vector2 pos = blk.get(n);
 	        for(int a=0; a<9; a++) for(int b=0; b<9; b++) {
-	            int tmpx = blk.x + i*9 + a, tmpy = blk.y + j*9 + b;
-	            table.setTableEntry(tmpx, tmpy, {blk.col, 0, brickImages[blk.col].GetColor(a, b)});
+	            int tmpx = blk.x + pos.x*9 + a, tmpy = blk.y + pos.y*9 + b;
+	            table.setTableEntry(tmpx, tmpy, {blk.col[n], 0, brickImages[blk.col[n]].GetColor(a, b)});
 	        }
 	    }
 	}
 
 	void rainbowBomb(int x, int y, int r) {
-		r /= 2;
-		for(int n=0; n<5; n++) {
-			// define the position of a small bomb
-			raylib::Vector2 pos(x, y);
-			int xoff, yoff;
-			do {
-				xoff = GetRandomValue(-r, r);
-				yoff = GetRandomValue(-r, r);
-			} while(xoff*xoff+yoff*yoff > r*r);
-			pos += raylib::Vector2(xoff, yoff);
+		// define the color of the small bomb
+		std::map<int, int> colorMap;
+		int ranColIdx = 0;
 
-			// define the color of the small bomb
-			int ranColIdx = GetRandomValue(1, 5);
+		// put the small bomb
+		for(int i=-r; i<=r; i++) for(int j=-r; j<=r; j++) {
+			if(i*i+j*j>r*r) continue;
+			if(!table.isSafe(x+i, y+j)) continue;
+			if(table.getTableColor(x+i, y+j)==0) continue;
 
-			// put the small bomb
-			for(int i=-r; i<=r; i++) for(int j=-r; j<=r; j++) {
-				if(i*i+j*j>r*r) continue;
-				if(!table.isSafe(pos.x+i, pos.y+j)) continue;
-				if(table.getTableColor(pos.x+i, pos.y+j)==0) continue;
-				table.setTableEntry(pos.x+i, pos.y+j, {ranColIdx, 0, brickImages[ranColIdx].GetColor(0, 0)});
+			int hash = ((x + i)/6)*W + (y + j)/6;
+			if(colorMap[hash] == 0) {
+				ranColIdx = GetRandomValue(1, 5);
+				colorMap[hash] = ranColIdx;
+			} else {
+				ranColIdx = colorMap[hash];
 			}
+
+			table.setTableEntry(x+i, y+j, {ranColIdx, 0, brickImages[ranColIdx].GetColor(0, 0)});
 		}
 	}
 
@@ -211,14 +210,15 @@ public:
 
         globalTimer++;
         clearTimer = std::max(clearTimer-1, -1);
-        comboTimer = std::max(comboTimer-1, 0);
-		if(comboTimer == 0) {
-			combo = 0;
-		}
-		wizardTimer = std::max(wizardTimer-1, 0);
         
 		table.setAutoTexture();
         if(clearTimer == -1) {
+	        comboTimer = std::max(comboTimer-1, 0);
+			if(comboTimer == 0) {
+				combo = 0;
+			}
+			wizardTimer = std::max(wizardTimer-1, 0);
+
 			// wizard
 			switch(wizardState) {
 			case WS_IDLE:
@@ -227,15 +227,27 @@ public:
 						wizardState = WS_ANGRY;
 						wizardTimer = 240;
 						// skill
-						for(int i=0; i<20; i++) {
-							bombx = GetRandomValue(0, W-1);
-							bomby = GetRandomValue(0, H-1);
-							if(table.getTableColor(bombx, bomby)!=0) {
-								setFlag("BOMB");
-								rainbowBomb(bombx, bomby, 15);
-								break;
+						switch(GetRandomValue(0, 1)) {
+						case 0:
+							for(int i=0; i<20; i++) {
+								bombx = GetRandomValue(0, W-1);
+								bomby = GetRandomValue(0, H-1);
+								if(table.getTableColor(bombx, bomby)!=0) {
+									setFlag("BOMB");
+									rainbowBomb(bombx, bomby, 15);
+									break;
+								}
 							}
+							break;
+						case 1:
+							//randomize current brick color
+							for(int n=0; n<4; n++) {
+								curBlock.col[n] = GetRandomValue(1, 5);
+							}
+							break;
 						}
+						clearTimer = clearTimerMax;
+						setFlag("MAGIC");
 					} else {
 						wizardState = WS_MOVE;
 						wizardDir = GetRandomValue(0, 1)*2 - 1;
@@ -261,6 +273,7 @@ public:
 				}
 				break;
 			case WS_ANGRY:
+				consumeFlag("MAGIC");
 				if(wizardTimer == 0) {
 					wizardState = WS_IDLE;
 					wizardTimer = 120;
@@ -316,7 +329,7 @@ public:
             int yspd = IsKeyPressed(KEY_SPACE) ? 9999 : (IsKeyDown(KEY_DOWN) ? 3 : 1);
             for(int i=0; i<yspd; i++) {
                 BlockState tmp = curBlock;
-                tmp.y += 1;
+                tmp.y += yspd==1 ? (globalTimer/2)%2 : 1;
                 if(!colCheck(tmp)) {
                     curBlock = tmp;
                 } else {
@@ -350,6 +363,10 @@ public:
         } else if(clearTimer == 0) {
             score += table.clearMatchedEntry()/10;
 			consumeFlag("MATCH");
+        } else {
+            if(getFlag("MAGIC")) {
+                curBlock.y += (0-curBlock.y)/15;
+            }
         }
 
         table.resetAutoTexture();
